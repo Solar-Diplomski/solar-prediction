@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import logging
 from contextlib import asynccontextmanager
+from typing import List
 from app.service.forecast_service import ForecastService
+from app.models.weather_forecast import WeatherForecast
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -64,3 +66,33 @@ async def refresh_power_plants():
             "error": "Critical error during refresh",
             "count": forecast_service.get_power_plants_count(),
         }
+
+
+@app.get("/weather-forecasts", response_model=List[WeatherForecast])
+async def get_weather_forecasts():
+    """
+    Fetch weather forecasts for all power plants
+
+    Returns:
+        List of weather forecasts for all active power plants
+    """
+    try:
+        if not forecast_service.is_initialized():
+            raise HTTPException(
+                status_code=503,
+                detail="Service not initialized. Power plants not loaded.",
+            )
+
+        forecasts = forecast_service.fetch_weather_forecasts()
+
+        if not forecasts:
+            return []
+
+        logging.info(f"Successfully fetched {len(forecasts)} weather forecasts")
+        return forecasts
+
+    except Exception as e:
+        logging.error(f"Error fetching weather forecasts: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch weather forecasts: {str(e)}"
+        )
