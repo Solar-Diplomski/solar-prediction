@@ -27,6 +27,14 @@ class OpenMeteoConnector:
             "shortwave_radiation",
             "diffuse_radiation",
             "direct_normal_irradiance",
+            "cloud_cover_low",
+            "cloud_cover_mid",
+            "et0_fao_evapotranspiration",
+            "vapour_pressure_deficit",
+            "is_day",
+            "sunshine_duration",
+            "shortwave_radiation_instant",
+            "diffuse_radiation_instant",
         ]
 
     def _get_normalized_time(self) -> datetime:
@@ -146,6 +154,28 @@ class OpenMeteoConnector:
                     direct_normal_irradiance=self._get_value_at_index(
                         minutely_data.get("direct_normal_irradiance"), i
                     ),
+                    cloud_cover_low=self._get_value_at_index(
+                        minutely_data.get("cloud_cover_low"), i
+                    ),
+                    cloud_cover_mid=self._get_value_at_index(
+                        minutely_data.get("cloud_cover_mid"), i
+                    ),
+                    et0_fao_evapotranspiration=self._get_value_at_index(
+                        minutely_data.get("et0_fao_evapotranspiration"), i
+                    ),
+                    vapour_pressure_deficit=self._get_value_at_index(
+                        minutely_data.get("vapour_pressure_deficit"), i
+                    ),
+                    is_day=self._get_value_at_index(minutely_data.get("is_day"), i),
+                    sunshine_duration=self._get_value_at_index(
+                        minutely_data.get("sunshine_duration"), i
+                    ),
+                    shortwave_radiation_instant=self._get_value_at_index(
+                        minutely_data.get("shortwave_radiation_instant"), i
+                    ),
+                    diffuse_radiation_instant=self._get_value_at_index(
+                        minutely_data.get("diffuse_radiation_instant"), i
+                    ),
                 )
 
                 forecast_data.append(data_point)
@@ -204,9 +234,11 @@ class OpenMeteoConnector:
 
         print("\nFirst 5 data points:")
         print(
-            "Time                | Temp(°C) | Humidity(%) | Cloud(%) | Wind(km/h) | Wind Dir(°) | Solar(W/m²) | Diffuse(W/m²) | DNI(W/m²)"
+            "Time                | Temp(°C) | Humidity(%) | Cloud(%) | Wind(km/h) | "
+            "Wind Dir(°) | Solar(W/m²) | Diffuse(W/m²) | DNI(W/m²) | "
+            "Low Cloud(%) | Mid Cloud(%) | Is Day | VPD(kPa)"
         )
-        print("-" * 120)
+        print("-" * 160)
 
         for i, data_point in enumerate(forecast.forecast_data[:5]):
             print(
@@ -218,7 +250,11 @@ class OpenMeteoConnector:
                 f"{data_point.wind_direction_10m or 'N/A':>11} | "
                 f"{data_point.shortwave_radiation or 'N/A':>11} | "
                 f"{data_point.diffuse_radiation or 'N/A':>13} | "
-                f"{data_point.direct_normal_irradiance or 'N/A':>9}"
+                f"{data_point.direct_normal_irradiance or 'N/A':>9} | "
+                f"{data_point.cloud_cover_low or 'N/A':>12} | "
+                f"{data_point.cloud_cover_mid or 'N/A':>12} | "
+                f"{data_point.is_day or 'N/A':>6} | "
+                f"{data_point.vapour_pressure_deficit or 'N/A':>8}"
             )
 
     def print_all_forecasts(self, forecasts: List[WeatherForecast]) -> None:

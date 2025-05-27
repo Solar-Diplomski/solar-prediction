@@ -6,6 +6,7 @@ class PowerPlant(BaseModel):
     id: int
     longitude: Optional[float] = None
     latitude: Optional[float] = None
+    capacity: Optional[float] = None
 
     def __hash__(self):
         return hash(self.id)

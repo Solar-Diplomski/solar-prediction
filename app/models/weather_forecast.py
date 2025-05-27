@@ -15,6 +15,14 @@ class WeatherDataPoint(BaseModel):
     shortwave_radiation: Optional[float] = None
     diffuse_radiation: Optional[float] = None
     direct_normal_irradiance: Optional[float] = None
+    cloud_cover_low: Optional[float] = None
+    cloud_cover_mid: Optional[float] = None
+    et0_fao_evapotranspiration: Optional[float] = None
+    vapour_pressure_deficit: Optional[float] = None
+    is_day: Optional[int] = None
+    sunshine_duration: Optional[float] = None
+    shortwave_radiation_instant: Optional[float] = None
+    diffuse_radiation_instant: Optional[float] = None
 
 
 class WeatherForecast(BaseModel):

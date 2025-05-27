@@ -1,9 +1,11 @@
 import logging
+import asyncio
 from typing import List, Optional
 from app.models.power_plant import PowerPlant, PowerPlantState
 from app.models.weather_forecast import WeatherForecast
 from app.service.model_manager_connector import ModelManagerConnector
 from app.service.open_meteo_connector import OpenMeteoConnector
+from app.repository.weather_forecast_repository import weather_forecast_repository
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +32,8 @@ class ForecastService:
             if power_plants is not None:
                 self.power_plant_state.update_power_plants(power_plants)
                 self._is_initialized = True
-                logger.info(f"Loaded {len(power_plants)} power plants")
                 return True
             else:
-                logger.warning("No power plants loaded from external service")
                 return False
 
         except Exception as e:
@@ -71,6 +71,7 @@ class ForecastService:
                     "id": plant.id,
                     "longitude": plant.longitude,
                     "latitude": plant.latitude,
+                    "capacity": plant.capacity,
                 }
                 for plant in plants
             ],
@@ -84,36 +85,50 @@ class ForecastService:
             List of WeatherForecast objects
         """
         if not self._is_initialized:
-            logger.warning("Forecast service not initialized. Load power plants first.")
             return []
 
         power_plants = self.get_all_power_plants()
         if not power_plants:
-            logger.warning("No power plants available for weather forecast")
             return []
 
-        logger.info(f"Fetching weather forecasts for {len(power_plants)} power plants")
         forecasts = self.open_meteo_connector.fetch_weather_forecasts_for_all_plants(
             power_plants
         )
 
         return forecasts
 
-    def fetch_and_print_weather_forecasts(self) -> None:
+    async def _save_forecasts_async(self, forecasts: List[WeatherForecast]) -> None:
         """
-        Fetch weather forecasts for all power plants and print them in row format
+        Asynchronously save weather forecasts to database
+
+        Args:
+            forecasts: List of WeatherForecast objects to save
+        """
+        try:
+            if not forecasts:
+                return
+
+            await weather_forecast_repository.save_weather_forecasts_batch(forecasts)
+
+        except Exception as e:
+            logger.error(f"Error during async forecast save: {e}")
+
+    def fetch_and_save_weather_forecasts(self) -> List[WeatherForecast]:
+        """
+        Fetch weather forecasts for all power plants and save them asynchronously to database
+
+        Returns:
+            List of WeatherForecast objects that were fetched
         """
         forecasts = self.fetch_weather_forecasts()
 
         if not forecasts:
-            print("No weather forecasts available.")
-            return
+            return []
 
-        print(f"\n{'='*60}")
-        print(f"WEATHER FORECASTS FOR {len(forecasts)} POWER PLANTS")
-        print(f"{'='*60}")
+        # Start async save task (fire and forget)
+        asyncio.create_task(self._save_forecasts_async(forecasts))
 
-        self.open_meteo_connector.print_all_forecasts(forecasts)
+        return forecasts
 
     def fetch_weather_forecast_for_plant(
         self, plant_id: int
@@ -129,7 +144,26 @@ class ForecastService:
         """
         power_plant = self.get_power_plant(plant_id)
         if not power_plant:
-            logger.warning(f"Power plant {plant_id} not found")
             return None
 
         return self.open_meteo_connector.fetch_weather_forecast(power_plant)
+
+    async def fetch_and_save_weather_forecast_for_plant(
+        self, plant_id: int
+    ) -> Optional[WeatherForecast]:
+        """
+        Fetch weather forecast for a specific power plant and save it asynchronously
+
+        Args:
+            plant_id: ID of the power plant
+
+        Returns:
+            WeatherForecast object if successful, None if failed
+        """
+        forecast = self.fetch_weather_forecast_for_plant(plant_id)
+
+        if forecast:
+            # Start async save task (fire and forget)
+            asyncio.create_task(self._save_forecasts_async([forecast]))
+
+        return forecast
