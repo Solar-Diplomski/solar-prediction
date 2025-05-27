@@ -1,11 +1,10 @@
-from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
+from pydantic import BaseModel
+
 
 class WeatherDataPoint(BaseModel):
-    """Single weather data point for a specific time"""
-
     time: datetime
     temperature_2m: Optional[float] = None
     relative_humidity_2m: Optional[float] = None
@@ -26,8 +25,6 @@ class WeatherDataPoint(BaseModel):
 
 
 class WeatherForecast(BaseModel):
-    """Weather forecast for a specific power plant"""
-
     power_plant_id: int
     latitude: float
     longitude: float
@@ -38,8 +35,6 @@ class WeatherForecast(BaseModel):
 
 
 class OpenMeteoResponse(BaseModel):
-    """Response model for Open Meteo API"""
-
     latitude: float
     longitude: float
     generationtime_ms: float

@@ -1,31 +1,56 @@
 from fastapi import FastAPI, HTTPException
 import logging
 from contextlib import asynccontextmanager
-from typing import List
-from app.service.forecast_service import ForecastService
-from app.models.weather_forecast import WeatherForecast
+from app.prediction.data_preparation_service import DataPreparationService
+from app.prediction.prediction_repository import PredictionRepository
+from app.prediction.prediction_service import PredictionService
+from app.prediction.state.model_manager_connector import ModelManagerConnector
+from app.prediction.state.state_manager import StateManager
+from app.prediction.weather_forecast.open_meteo_connector import OpenMeteoConnector
 from app.config.database import db_manager
+from app.prediction.weather_forecast.weather_forecast_repository import (
+    WeatherForecastRepository,
+)
+from app.prediction.weather_forecast.weather_forecast_service import (
+    WeatherForecastService,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-forecast_service = ForecastService()
+OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+MODEL_MANAGER_BASE_URL = "http://localhost:8000"
+
+model_manager_connector = ModelManagerConnector(base_url=MODEL_MANAGER_BASE_URL)
+state_manager = StateManager(model_manager_connector=model_manager_connector)
+
+open_meteo_connector = OpenMeteoConnector(base_url=OPEN_METEO_BASE_URL)
+weather_forecast_repository = WeatherForecastRepository()
+weather_forecast_service = WeatherForecastService(
+    open_meteo_connector=open_meteo_connector,
+    weather_forecast_repository=weather_forecast_repository,
+)
+
+data_preparation_service = DataPreparationService()
+prediction_repository = PredictionRepository()
+prediction_service = PredictionService(
+    state_manager=state_manager,
+    weather_forecast_service=weather_forecast_service,
+    data_preparation_service=data_preparation_service,
+    prediction_repository=prediction_repository,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     try:
-        # Initialize database connection pool
         db_success = await db_manager.initialize()
         if not db_success:
             logging.error("Failed to initialize database connection pool")
 
-        # Load complete state (power plants and models)
-        success = forecast_service.load_state()
-        if not success:
-            logging.warning("Failed to load complete state on startup")
+        state_manager.refresh_state()
     except Exception as e:
         logging.error(f"Startup error: {e}")
 
@@ -49,229 +74,25 @@ async def root():
 
 @app.get("/status")
 async def get_status():
-    """Get service status"""
+    power_plants = state_manager.get_active_power_plants()
+    models = []
+    for power_plant in power_plants:
+        models.append(state_manager.get_active_models_for_power_plant(power_plant.id))
     return {
         "service": "Solar Prediction Service",
-        "power_plants_loaded": forecast_service.is_initialized(),
-        "models_loaded": forecast_service.is_models_initialized(),
-        "fully_initialized": forecast_service.is_fully_initialized(),
-        "power_plants_count": forecast_service.get_power_plants_count(),
-        "models_count": forecast_service.get_models_count(),
-        "complete_summary": forecast_service.get_complete_summary(),
+        "power_plants": power_plants,
+        "models": models,
     }
 
 
-@app.post("/power-plants/refresh")
-async def refresh_power_plants():
-    """Manually refresh power plants from external service"""
+@app.post("/predictions/generate")
+async def generate_predictions():
     try:
-        success = forecast_service.refresh_power_plants()
-        if success:
-            return {
-                "message": "Power plants refreshed successfully",
-                "count": forecast_service.get_power_plants_count(),
-            }
-        else:
-            return {
-                "error": "Failed to refresh power plants",
-                "count": forecast_service.get_power_plants_count(),
-            }
-    except Exception as e:
-        logging.error(f"Refresh error: {e}")
-        return {
-            "error": "Critical error during refresh",
-            "count": forecast_service.get_power_plants_count(),
-        }
-
-
-@app.get("/weather-forecasts", response_model=List[WeatherForecast])
-async def get_weather_forecasts():
-    """
-    Fetch weather forecasts for all power plants and save them to database
-
-    Returns:
-        List of weather forecasts for all active power plants
-    """
-    try:
-        if not forecast_service.is_initialized():
-            raise HTTPException(
-                status_code=503,
-                detail="Service not initialized. Power plants not loaded.",
-            )
-
-        forecasts = forecast_service.fetch_and_save_weather_forecasts()
-
-        if not forecasts:
-            return []
-
-        return forecasts
+        prediction_service.predict()
 
     except Exception as e:
-        logging.error(f"Error fetching weather forecasts: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch weather forecasts: {str(e)}"
-        )
-
-
-@app.get("/weather-forecasts/{plant_id}", response_model=WeatherForecast)
-async def get_weather_forecast_for_plant(plant_id: int):
-    """
-    Fetch weather forecast for a specific power plant and save it to database
-
-    Args:
-        plant_id: ID of the power plant
-
-    Returns:
-        Weather forecast for the specified power plant
-    """
-    try:
-        if not forecast_service.is_initialized():
-            raise HTTPException(
-                status_code=503,
-                detail="Service not initialized. Power plants not loaded.",
-            )
-
-        forecast = await forecast_service.fetch_and_save_weather_forecast_for_plant(
-            plant_id
-        )
-
-        if not forecast:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Weather forecast not available for power plant {plant_id}",
-            )
-
-        return forecast
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Error fetching weather forecast for plant {plant_id}: {e}")
+        logging.error(f"Error generating predictions: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to fetch weather forecast for plant {plant_id}: {str(e)}",
-        )
-
-
-@app.post("/models/load/{plant_id}")
-async def load_models_for_plant(plant_id: int, model_id: int = None):
-    """
-    Load and prepare ML models for a specific power plant
-
-    Args:
-        plant_id: ID of the power plant
-        model_id: Optional specific model ID to load
-
-    Returns:
-        Information about loaded models and their readiness for predictions
-    """
-    try:
-        if not forecast_service.is_fully_initialized():
-            raise HTTPException(
-                status_code=503,
-                detail="Service not fully initialized. Both power plants and models must be loaded.",
-            )
-
-        result = forecast_service.prepare_model_for_predictions(plant_id, model_id)
-
-        if not result["success"]:
-            raise HTTPException(
-                status_code=404 if "not found" in result["error"] else 500,
-                detail=result["error"],
-            )
-
-        # Remove the actual loaded models from the response (they're not JSON serializable)
-        response_result = result.copy()
-        response_result.pop("loaded_models", None)
-
-        return response_result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Error loading models for plant {plant_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load models for plant {plant_id}: {str(e)}",
-        )
-
-
-@app.get("/models/cache-info")
-async def get_model_cache_info():
-    """
-    Get information about the loaded models cache
-
-    Returns:
-        Information about cached models
-    """
-    try:
-        return forecast_service.get_loaded_model_cache_info()
-    except Exception as e:
-        logging.error(f"Error getting model cache info: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to get model cache info: {str(e)}",
-        )
-
-
-@app.post("/models/cache/clear")
-async def clear_model_cache():
-    """
-    Clear the loaded models cache
-
-    Returns:
-        Confirmation message
-    """
-    try:
-        forecast_service.clear_model_cache()
-        return {"message": "Model cache cleared successfully"}
-    except Exception as e:
-        logging.error(f"Error clearing model cache: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to clear model cache: {str(e)}",
-        )
-
-
-@app.post("/models/test/{plant_id}")
-async def test_model_loading_flow(plant_id: int):
-    """
-    Test the complete model loading and data preparation flow for a plant
-
-    This endpoint demonstrates:
-    1. Loading joblib models for the plant
-    2. Fetching weather forecast data
-    3. Formatting weather data according to model features
-    4. Preparing everything for predictions
-
-    Args:
-        plant_id: ID of the power plant
-
-    Returns:
-        Detailed information about the test results and data readiness
-    """
-    try:
-        if not forecast_service.is_fully_initialized():
-            raise HTTPException(
-                status_code=503,
-                detail="Service not fully initialized. Both power plants and models must be loaded.",
-            )
-
-        result = forecast_service.test_model_loading_with_weather_data(plant_id)
-
-        if not result["success"]:
-            raise HTTPException(
-                status_code=404 if "not found" in result.get("error", "") else 500,
-                detail=result.get("error", "Unknown error occurred"),
-            )
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Error testing model loading flow for plant {plant_id}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to test model loading flow for plant {plant_id}: {str(e)}",
+            detail="Failed to generate predictions.",
         )

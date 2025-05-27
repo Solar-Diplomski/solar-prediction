@@ -1,6 +1,6 @@
 CREATE TABLE weather_forecasts (
     forecast_time TIMESTAMPTZ NOT NULL,
-    plant_id INTEGER NOT NULL REFERENCES power_plants(plant_id),
+    plant_id INTEGER NOT NULL REFERENCES power_plant_v2(id),
     created_at TIMESTAMPTZ NOT NULL,
     temperature_2m DOUBLE PRECISION,
     relative_humidity_2m DOUBLE PRECISION,

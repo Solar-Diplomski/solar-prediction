@@ -1,16 +1,15 @@
+import asyncio
 import logging
 from typing import List
-from app.models.weather_forecast import WeatherForecast
+from app.prediction.weather_forecast.weather_forecast_models import WeatherForecast
 from app.config.database import db_manager
 
 logger = logging.getLogger(__name__)
 
 
 class WeatherForecastRepository:
-    """Repository for weather forecast database operations"""
-
     def __init__(self):
-        self.insert_query = """
+        self._insert_query = """
             INSERT INTO weather_forecasts (
                 forecast_time, plant_id, created_at, temperature_2m, relative_humidity_2m,
                 cloud_cover, cloud_cover_low, cloud_cover_mid, wind_speed_10m, wind_direction_10m,
@@ -22,18 +21,40 @@ class WeatherForecastRepository:
             ) ON CONFLICT (forecast_time, plant_id, created_at) DO NOTHING
         """
 
-    async def save_weather_forecast(self, forecast: WeatherForecast) -> bool:
-        """
-        Save a single weather forecast to the database
-
-        Args:
-            forecast: WeatherForecast object to save
-
-        Returns:
-            True if successful, False otherwise
-        """
+    def save_weather_forecasts_batch(self, forecasts: List[WeatherForecast]) -> None:
         try:
-            # Prepare data for batch insert
+            loop = asyncio.get_event_loop()
+
+            # Create the task without waiting for it
+            task = loop.create_task(self._save_weather_forecasts_batch_async(forecasts))
+
+            # Add error handling callback
+            task.add_done_callback(self._handle_save_completion)
+
+            logger.info(
+                f"Started background save task for {len(forecasts)} weather forecasts"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to start weather forecast save task: {e}")
+
+    async def _save_weather_forecasts_batch_async(
+        self, forecasts: List[WeatherForecast]
+    ) -> int:
+        if not forecasts:
+            return 0
+
+        successful_saves = 0
+
+        for forecast in forecasts:
+            success = await self._save_weather_forecast_async(forecast)
+            if success:
+                successful_saves += 1
+
+        return successful_saves
+
+    async def _save_weather_forecast_async(self, forecast: WeatherForecast) -> bool:
+        try:
             forecast_records = []
             for data_point in forecast.forecast_data:
                 record = (
@@ -60,7 +81,7 @@ class WeatherForecastRepository:
                 forecast_records.append(record)
 
             # Execute batch insert
-            await db_manager.execute_many(self.insert_query, forecast_records)
+            await db_manager.execute_many(self._insert_query, forecast_records)
             return True
 
         except Exception as e:
@@ -69,30 +90,10 @@ class WeatherForecastRepository:
             )
             return False
 
-    async def save_weather_forecasts_batch(
-        self, forecasts: List[WeatherForecast]
-    ) -> int:
-        """
-        Save multiple weather forecasts to the database
-
-        Args:
-            forecasts: List of WeatherForecast objects to save
-
-        Returns:
-            Number of successfully saved forecasts
-        """
-        if not forecasts:
-            return 0
-
-        successful_saves = 0
-
-        for forecast in forecasts:
-            success = await self.save_weather_forecast(forecast)
-            if success:
-                successful_saves += 1
-
-        return successful_saves
-
-
-# Global repository instance
-weather_forecast_repository = WeatherForecastRepository()
+    def _handle_save_completion(self, task: asyncio.Task):
+        """Callback to handle task completion and errors"""
+        try:
+            result = task.result()
+            logger.debug(f"Weather forecast save task completed with result: {result}")
+        except Exception as e:
+            logger.error(f"Weather forecast save task failed: {e}")

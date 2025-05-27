@@ -1,26 +1,18 @@
 import requests
 import logging
 from typing import List, Optional
-from app.models.power_plant import PowerPlant
-from app.models.ml_model import MLModel
+from app.prediction.state.state_models import ModelMetadata, PowerPlant
 
 logger = logging.getLogger(__name__)
 
 
 class ModelManagerConnector:
-    """Connector for fetching data from model management services"""
 
     def __init__(self, base_url: str):
         self.base_url = base_url.rstrip("/")
-        self.timeout = 30  # seconds
+        self.timeout = 30
 
     def fetch_active_power_plants(self) -> Optional[List[PowerPlant]]:
-        """
-        Fetch active power plants from the external service
-
-        Returns:
-            List of PowerPlant objects if successful, None if failed
-        """
         try:
             url = f"{self.base_url}/internal/power-plant/active"
 
@@ -29,7 +21,6 @@ class ModelManagerConnector:
 
             data = response.json()
 
-            # Convert JSON data to PowerPlant objects
             power_plants = []
             for plant_data in data:
                 try:
@@ -48,33 +39,28 @@ class ModelManagerConnector:
             logger.error(f"Unexpected error while fetching power plants: {e}")
             return None
 
-    def fetch_active_models(self) -> Optional[List[MLModel]]:
-        """
-        Fetch active ML models from the external service
-
-        Returns:
-            List of MLModel objects if successful, None if failed
-        """
+    def fetch_active_models_metadata(self) -> Optional[List[ModelMetadata]]:
         try:
             url = f"{self.base_url}/internal/models/active"
 
             response = requests.get(url, timeout=self.timeout)
             response.raise_for_status()
 
-            data = response.json()
+            json_data = response.json()
 
-            # Convert JSON data to MLModel objects
-            models = []
-            for model_data in data:
+            models_metadata = []
+            for json_model_metadata in json_data:
                 try:
-                    model = MLModel(**model_data)
-                    models.append(model)
+                    model_metadata = ModelMetadata(**json_model_metadata)
+                    models_metadata.append(model_metadata)
                 except Exception as e:
-                    logger.error(f"Failed to parse model data {model_data}: {e}")
+                    logger.error(
+                        f"Failed to parse model metadata {json_model_metadata}: {e}"
+                    )
                     continue
 
-            logger.info(f"Successfully fetched {len(models)} active models")
-            return models
+            logger.info(f"Successfully fetched {len(models_metadata)} active models")
+            return models_metadata
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch active models: {e}")
@@ -84,22 +70,12 @@ class ModelManagerConnector:
             return None
 
     def download_model_file(self, model_id: int) -> Optional[bytes]:
-        """
-        Download model file from the external service
-
-        Args:
-            model_id: ID of the model to download
-
-        Returns:
-            Model file content as bytes if successful, None if failed
-        """
         try:
             url = f"{self.base_url}/internal/models/{model_id}/download"
 
             response = requests.get(url, timeout=self.timeout)
             response.raise_for_status()
 
-            # Verify content type
             content_type = response.headers.get("content-type", "")
             if content_type != "application/octet-stream":
                 logger.warning(
