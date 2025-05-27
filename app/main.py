@@ -22,10 +22,10 @@ async def lifespan(app: FastAPI):
         if not db_success:
             logging.error("Failed to initialize database connection pool")
 
-        # Load power plants
-        success = forecast_service.load_power_plants()
+        # Load complete state (power plants and models)
+        success = forecast_service.load_state()
         if not success:
-            logging.warning("Failed to load power plants on startup")
+            logging.warning("Failed to load complete state on startup")
     except Exception as e:
         logging.error(f"Startup error: {e}")
 
@@ -53,8 +53,11 @@ async def get_status():
     return {
         "service": "Solar Prediction Service",
         "power_plants_loaded": forecast_service.is_initialized(),
+        "models_loaded": forecast_service.is_models_initialized(),
+        "fully_initialized": forecast_service.is_fully_initialized(),
         "power_plants_count": forecast_service.get_power_plants_count(),
-        "power_plants": forecast_service.get_power_plants_summary(),
+        "models_count": forecast_service.get_models_count(),
+        "complete_summary": forecast_service.get_complete_summary(),
     }
 
 
