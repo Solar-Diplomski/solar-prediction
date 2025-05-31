@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.prediction.data_preparation_service import DataPreparationService
 from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.prediction_service import PredictionService
+from app.prediction.scheduling import PredictionScheduler
 from app.prediction.state.model_manager_connector import ModelManagerConnector
 from app.prediction.state.state_manager import StateManager
 from app.prediction.weather_forecast.open_meteo_connector import OpenMeteoConnector
@@ -40,6 +41,7 @@ prediction_service = PredictionService(
     data_preparation_service=data_preparation_service,
     prediction_repository=prediction_repository,
 )
+prediction_scheduler = PredictionScheduler(prediction_service)
 
 
 @asynccontextmanager
@@ -49,8 +51,12 @@ async def lifespan(app: FastAPI):
         db_success = await db_manager.initialize()
         if not db_success:
             logging.error("Failed to initialize database connection pool")
+            raise RuntimeError("Database initialization failed")
 
         state_manager.refresh_state()
+
+        await prediction_scheduler.start()
+
     except Exception as e:
         logging.error(f"Startup error: {e}")
 
@@ -58,6 +64,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     try:
+        # Gracefully stop the prediction scheduler first (it needs database connection)
+        await prediction_scheduler.stop()
+
         await db_manager.close()
     except Exception as e:
         logging.error(f"Shutdown error: {e}")
@@ -82,6 +91,7 @@ async def get_status():
         "service": "Solar Prediction Service",
         "power_plants": power_plants,
         "models": models,
+        "prediction_scheduler": prediction_scheduler.get_status(),
     }
 
 
