@@ -1,0 +1,1 @@
+ALTER TABLE power_predictions RENAME COLUMN predicted_power_mw TO predicted_power; -- Predicted power output (W)

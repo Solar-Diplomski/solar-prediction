@@ -8,4 +8,4 @@ class PowerPrediction(BaseModel):
     prediction_time: datetime
     model_id: int
     created_at: datetime
-    predicted_power_mw: Optional[float] = None
+    predicted_power: Optional[float] = None

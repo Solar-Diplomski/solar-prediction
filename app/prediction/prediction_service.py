@@ -112,7 +112,7 @@ class PredictionService:
                     model_id=model.metadata.id,
                     plant_id=weather_forecast.power_plant_id,
                     created_at=weather_forecast.fetch_time,
-                    predicted_power_mw=float(predictions[i]),
+                    predicted_power=float(predictions[i]),
                 )
                 power_predictions.append(prediction)
         return power_predictions

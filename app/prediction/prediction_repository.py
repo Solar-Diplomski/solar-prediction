@@ -11,7 +11,7 @@ class PredictionRepository:
     def __init__(self):
         self.insert_query = """
             INSERT INTO power_predictions (
-                prediction_time, model_id, created_at, predicted_power_mw
+                prediction_time, model_id, created_at, predicted_power
             ) VALUES (
                 $1, $2, $3, $4
             ) ON CONFLICT (prediction_time, model_id, created_at) DO NOTHING
@@ -49,7 +49,7 @@ class PredictionRepository:
                     prediction.prediction_time,
                     prediction.model_id,
                     prediction.created_at,
-                    prediction.predicted_power_mw,
+                    prediction.predicted_power,
                 )
                 prediction_records.append(record)
 
