@@ -1,7 +1,7 @@
 import os
 import asyncpg
 import logging
-from typing import Optional
+from typing import Optional, List, Any
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,11 @@ class DatabaseManager:
         """Execute a command with multiple parameter sets"""
         async with self.pool.acquire() as connection:
             return await connection.executemany(command, args_list)
+
+    async def execute(self, query: str, *args) -> List[Any]:
+        """Execute a single query and return results (for SELECT) or affected rows count"""
+        async with self.pool.acquire() as connection:
+            return await connection.fetch(query, *args)
 
 
 # Global database manager instance

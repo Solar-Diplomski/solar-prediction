@@ -1,9 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import List
 from app.prediction.data_preparation_service import DataPreparationService
 from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.prediction_service import PredictionService
+from app.prediction.prediction_models import ForecastResponse
 from app.prediction.scheduling import PredictionScheduler
 from app.prediction.state.model_manager_connector import ModelManagerConnector
 from app.prediction.state.state_manager import StateManager
@@ -77,11 +80,10 @@ app = FastAPI(title="Solar Prediction Service", version="1.0.0", lifespan=lifesp
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
     return {"message": "Solar Prediction Service is running"}
 
 
-@app.get("/status")
+@app.get("/internal/status")
 async def get_status():
     power_plants = state_manager.get_active_power_plants()
     models = []
@@ -95,14 +97,45 @@ async def get_status():
     }
 
 
-@app.post("/predictions/generate")
-async def generate_predictions():
-    try:
-        prediction_service.predict()
+@app.get("/internal/forecast/{model_id}", response_model=List[ForecastResponse])
+async def get_forecast(
+    model_id: int,
+    start_date: datetime = Query(..., description="Start date in ISO 8601 format"),
+    end_date: datetime = Query(..., description="End date in ISO 8601 format"),
+):
 
-    except Exception as e:
-        logging.error(f"Error generating predictions: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to generate predictions.",
+    logging.info(
+        f"Received forecast request for model {model_id}, start_date: {start_date}, end_date: {end_date}"
+    )
+
+    try:
+        if start_date >= end_date:
+            logging.warning(
+                f"Invalid date range: start_date {start_date} >= end_date {end_date}"
+            )
+            raise HTTPException(
+                status_code=400, detail="Start date must be before end date"
+            )
+
+        forecast_data = await prediction_repository.get_forecast_data(
+            model_id, start_date, end_date
         )
+
+        response = [
+            ForecastResponse(
+                id=row["id"],
+                prediction_time=row["prediction_time"],
+                power_output=row["power_output"],
+            )
+            for row in forecast_data
+        ]
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(
+            f"Error fetching forecast for model {model_id}: {e}", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to fetch forecast data")

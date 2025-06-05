@@ -9,3 +9,9 @@ class PowerPrediction(BaseModel):
     model_id: int
     created_at: datetime
     predicted_power: Optional[float] = None
+
+
+class ForecastResponse(BaseModel):
+    id: int
+    prediction_time: datetime
+    power_output: Optional[float] = None
