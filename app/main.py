@@ -97,7 +97,7 @@ async def get_status():
     }
 
 
-@app.get("/internal/forecast/{model_id}", response_model=List[ForecastResponse])
+@app.get("/forecast/{model_id}", response_model=List[ForecastResponse])
 async def get_forecast(
     model_id: int,
     start_date: datetime = Query(..., description="Start date in ISO 8601 format"),
