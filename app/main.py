@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List
+import os
 from app.prediction.data_preparation_service import DataPreparationService
 from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.prediction_service import PredictionService
@@ -24,7 +25,7 @@ logging.basicConfig(
 )
 
 OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
-MODEL_MANAGER_BASE_URL = "http://localhost:8000"
+MODEL_MANAGER_BASE_URL = os.getenv("MODEL_MANAGER_BASE_URL", "http://localhost:8000")
 
 model_manager_connector = ModelManagerConnector(base_url=MODEL_MANAGER_BASE_URL)
 state_manager = StateManager(model_manager_connector=model_manager_connector)
