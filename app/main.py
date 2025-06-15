@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -18,6 +18,11 @@ from app.prediction.weather_forecast.weather_forecast_repository import (
 from app.prediction.weather_forecast.weather_forecast_service import (
     WeatherForecastService,
 )
+from app.prediction.power_readings.power_readings_repository import (
+    PowerReadingsRepository,
+)
+from app.prediction.power_readings.power_readings_service import PowerReadingsService
+from app.prediction.power_readings.power_readings_models import CSVUploadResponse
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -45,6 +50,10 @@ prediction_service = PredictionService(
     prediction_repository=prediction_repository,
 )
 prediction_scheduler = PredictionScheduler(prediction_service)
+
+# Initialize power readings services
+power_readings_repository = PowerReadingsRepository()
+power_readings_service = PowerReadingsService(power_readings_repository)
 
 
 @asynccontextmanager
@@ -139,3 +148,49 @@ async def get_forecast(
             f"Error fetching forecast for model {model_id}: {e}", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to fetch forecast data")
+
+
+@app.post("/reading/{plant_id}", response_model=CSVUploadResponse)
+async def upload_power_readings(
+    plant_id: int,
+    file: UploadFile = File(
+        ..., description="CSV file with timestamp and power columns"
+    ),
+):
+    """
+    Upload CSV file containing power readings for a specific power plant.
+
+    CSV format:
+    - No headers
+    - Two columns: timestamp (ISO format), power (float)
+    - Example: 2024-01-01T12:00:00Z,1234.56
+    """
+    logging.info(f"Received CSV upload request for plant {plant_id}")
+
+    try:
+        if not file.filename or not file.filename.lower().endswith(".csv"):
+            return CSVUploadResponse(
+                success=False,
+                message="File must be a CSV file",
+                validation_errors=["Invalid file type. Only CSV files are accepted."],
+            )
+
+        result = await power_readings_service.upload_csv_readings(file, plant_id)
+
+        if result.success:
+            return result
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "success": False,
+                    "message": result.message,
+                    "validation_errors": result.validation_errors,
+                },
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error uploading CSV for plant {plant_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to upload CSV file")
