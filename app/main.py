@@ -168,6 +168,7 @@ async def upload_power_readings(
     logging.info(f"Received CSV upload request for plant {plant_id}")
 
     try:
+        # Validate file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             return CSVUploadResponse(
                 success=False,
@@ -175,22 +176,13 @@ async def upload_power_readings(
                 validation_errors=["Invalid file type. Only CSV files are accepted."],
             )
 
+        # Process the CSV file
         result = await power_readings_service.upload_csv_readings(file, plant_id)
+        return result
 
-        if result.success:
-            return result
-        else:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "success": False,
-                    "message": result.message,
-                    "validation_errors": result.validation_errors,
-                },
-            )
-
-    except HTTPException:
-        raise
     except Exception as e:
         logging.error(f"Error uploading CSV for plant {plant_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to upload CSV file")
+        return CSVUploadResponse(
+            success=False,
+            message="Failed to upload CSV file",
+        )
