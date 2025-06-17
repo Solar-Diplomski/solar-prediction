@@ -150,6 +150,65 @@ async def get_forecast(
         raise HTTPException(status_code=500, detail="Failed to fetch forecast data")
 
 
+@app.get("/forecast/time_of_forecast/{model_id}", response_model=List[ForecastResponse])
+async def get_forecast_by_time_of_forecast(
+    model_id: int,
+    tof: datetime = Query(
+        ..., description="Time of forecast (created_at) in ISO 8601 format"
+    ),
+):
+
+    logging.info(
+        f"Received forecast request for model {model_id}, time_of_forecast: {tof}"
+    )
+
+    try:
+        forecast_data = (
+            await prediction_repository.get_forecast_data_by_time_of_forecast(
+                model_id, tof
+            )
+        )
+
+        response = [
+            ForecastResponse(
+                id=row["id"],
+                prediction_time=row["prediction_time"],
+                power_output=row["power_output"],
+            )
+            for row in forecast_data
+        ]
+
+        return response
+
+    except Exception as e:
+        logging.error(
+            f"Error fetching forecast for model {model_id} and time_of_forecast {tof}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to fetch forecast data")
+
+
+@app.get("/forecast/{model_id}/timestamps", response_model=List[datetime])
+async def get_forecast_timestamps(model_id: int):
+
+    logging.info(f"Received request for forecast timestamps for model {model_id}")
+
+    try:
+        timestamps = await prediction_repository.get_unique_forecast_timestamps(
+            model_id
+        )
+        return timestamps
+
+    except Exception as e:
+        logging.error(
+            f"Error fetching forecast timestamps for model {model_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch forecast timestamps"
+        )
+
+
 @app.post("/reading/{plant_id}", response_model=CSVUploadResponse)
 async def upload_power_readings(
     plant_id: int,
