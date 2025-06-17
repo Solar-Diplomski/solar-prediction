@@ -1,7 +1,7 @@
 import csv
 import io
 import logging
-from typing import Set
+from typing import Set, List
 from datetime import datetime
 from fastapi import UploadFile
 from app.prediction.power_readings.power_readings_models import (
@@ -19,6 +19,14 @@ logger = logging.getLogger(__name__)
 class PowerReadingsService:
     def __init__(self, power_readings_repository: PowerReadingsRepository):
         self._repository = power_readings_repository
+
+    async def get_power_readings(
+        self, plant_id: int, start_date: datetime, end_date: datetime
+    ) -> List[PowerReading]:
+        """
+        Get power readings for a specific plant within a date range.
+        """
+        return await self._repository.get_power_readings(plant_id, start_date, end_date)
 
     async def upload_csv_readings(
         self, file: UploadFile, plant_id: int

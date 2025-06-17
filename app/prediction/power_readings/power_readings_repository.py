@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from datetime import datetime
 from app.prediction.power_readings.power_readings_models import PowerReading
 from app.config.database import db_manager
 
@@ -15,6 +16,31 @@ class PowerReadingsRepository:
                 $1, $2, $3
             ) ON CONFLICT (timestamp, plant_id) DO NOTHING
         """
+
+    async def get_power_readings(
+        self, plant_id: int, start_date: datetime, end_date: datetime
+    ) -> List[PowerReading]:
+        """
+        Fetch power readings for a specific plant within a date range.
+        """
+        query = """
+            SELECT timestamp, power_w
+            FROM power_readings
+            WHERE plant_id = $1 
+            AND timestamp >= $2 
+            AND timestamp <= $3
+            ORDER BY timestamp
+        """
+
+        try:
+            rows = await db_manager.execute(query, plant_id, start_date, end_date)
+            return [
+                PowerReading(timestamp=row["timestamp"], power_w=row["power_w"])
+                for row in rows
+            ]
+        except Exception as e:
+            logger.error(f"Failed to fetch power readings for plant {plant_id}: {e}")
+            raise
 
     async def save_power_readings_batch(
         self, readings: List[PowerReading], plant_id: int

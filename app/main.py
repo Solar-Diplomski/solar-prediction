@@ -22,7 +22,10 @@ from app.prediction.power_readings.power_readings_repository import (
     PowerReadingsRepository,
 )
 from app.prediction.power_readings.power_readings_service import PowerReadingsService
-from app.prediction.power_readings.power_readings_models import CSVUploadResponse
+from app.prediction.power_readings.power_readings_models import (
+    CSVUploadResponse,
+    PowerReading,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -207,6 +210,43 @@ async def get_forecast_timestamps(model_id: int):
         raise HTTPException(
             status_code=500, detail="Failed to fetch forecast timestamps"
         )
+
+
+@app.get("/reading/{id}", response_model=List[PowerReading])
+async def get_power_readings(
+    id: int,
+    start_date: datetime = Query(..., description="Start date in ISO 8601 format"),
+    end_date: datetime = Query(..., description="End date in ISO 8601 format"),
+):
+    """
+    Get power readings for a specific plant within a date range.
+    """
+    logging.info(
+        f"Received power readings request for plant {id}, start_date: {start_date}, end_date: {end_date}"
+    )
+
+    try:
+        if start_date >= end_date:
+            logging.warning(
+                f"Invalid date range: start_date {start_date} >= end_date {end_date}"
+            )
+            raise HTTPException(
+                status_code=400, detail="Start date must be before end date"
+            )
+
+        readings = await power_readings_service.get_power_readings(
+            id, start_date, end_date
+        )
+
+        return readings
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(
+            f"Error fetching power readings for plant {id}: {e}", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to fetch power readings")
 
 
 @app.post("/reading/{plant_id}", response_model=CSVUploadResponse)
