@@ -312,3 +312,24 @@ async def get_horizon_metric_types():
         raise HTTPException(
             status_code=500, detail="Failed to fetch horizon metric types"
         )
+
+
+@app.get("/metric/cycle/type", response_model=List[str])
+async def get_cycle_metric_types():
+    """
+    Get available cycle metric types.
+
+    Returns:
+        List[str]: Array of cycle metric type names
+    """
+    logging.info("Received request for cycle metric types")
+
+    try:
+        metric_types = await metrics_service.get_cycle_metric_types()
+        return metric_types
+
+    except Exception as e:
+        logging.error(f"Error fetching cycle metric types: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch cycle metric types"
+        )

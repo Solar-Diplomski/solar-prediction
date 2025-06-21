@@ -25,3 +25,20 @@ class MetricsService:
         except Exception as e:
             logger.error(f"Error fetching horizon metric types: {e}")
             raise
+
+    async def get_cycle_metric_types(self) -> List[str]:
+        """
+        Get available cycle metric types.
+
+        Returns:
+            List[str]: List of cycle metric type names
+        """
+        logger.info("Fetching cycle metric types")
+
+        try:
+            metric_types = await self._metrics_repository.get_cycle_metric_types()
+            logger.info(f"Retrieved {len(metric_types)} cycle metric types")
+            return metric_types
+        except Exception as e:
+            logger.error(f"Error fetching cycle metric types: {e}")
+            raise

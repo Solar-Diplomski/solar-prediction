@@ -21,3 +21,19 @@ class MetricsRepository:
         except Exception as e:
             logger.error(f"Failed to fetch horizon metric types: {e}")
             raise
+
+    async def get_cycle_metric_types(self) -> List[str]:
+        """
+        Fetch available cycle metric types from the database enum.
+        """
+        query = """
+            SELECT unnest(enum_range(NULL::cycle_metric_type))::text AS metric_type
+            ORDER BY metric_type
+        """
+
+        try:
+            rows = await db_manager.execute(query)
+            return [row["metric_type"] for row in rows]
+        except Exception as e:
+            logger.error(f"Failed to fetch cycle metric types: {e}")
+            raise
