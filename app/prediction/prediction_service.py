@@ -105,14 +105,25 @@ class PredictionService:
             f"Mapping predictions to power predictions for model {model.metadata.id}"
         )
         power_predictions = []
-        for i, data_point in enumerate(weather_forecast.forecast_data):
+
+        # Skip the first weather data point (index 0) to avoid horizon=0 predictions
+        # Start from index 1 to ensure first prediction has horizon > 0
+        forecast_data_to_use = weather_forecast.forecast_data[1:]
+
+        for i, data_point in enumerate(forecast_data_to_use):
             if i < len(predictions):
+                # Calculate horizon in hours as (prediction_time - forecast_time)
+                horizon_seconds = (
+                    data_point.time - weather_forecast.fetch_time
+                ).total_seconds()
+                horizon_hours = horizon_seconds / 3600.0
+
                 prediction = PowerPrediction(
                     prediction_time=data_point.time,
                     model_id=model.metadata.id,
-                    plant_id=weather_forecast.power_plant_id,
                     created_at=weather_forecast.fetch_time,
                     predicted_power=float(predictions[i]),
+                    horizon=horizon_hours,
                 )
                 power_predictions.append(prediction)
         return power_predictions
