@@ -9,6 +9,7 @@ class PowerPrediction(BaseModel):
     model_id: int
     created_at: datetime
     predicted_power: Optional[float] = None
+    horizon: float
 
 
 class ForecastResponse(BaseModel):
