@@ -34,11 +34,7 @@ class DataPreparationService:
             context = self._prepare_context(weather_forecast, power_plant_capacity)
 
             formatted_data = []
-            # Skip the first weather data point (index 0) to avoid horizon=0 predictions
-            # This aligns with the prediction service that also skips the first point
-            forecast_data_to_use = weather_forecast.forecast_data[1:]
-
-            for data_point in forecast_data_to_use:
+            for data_point in weather_forecast.forecast_data:
                 feature_vector = self._calculate_features_for_data_point(
                     data_point, model_features, context
                 )

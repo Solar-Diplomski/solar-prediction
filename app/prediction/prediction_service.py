@@ -5,7 +5,10 @@ from app.prediction.prediction_models import PowerPrediction
 from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.state.state_manager import StateManager
 from app.prediction.state.state_models import MLModel
-from app.prediction.weather_forecast.weather_forecast_models import WeatherForecast
+from app.prediction.weather_forecast.weather_forecast_models import (
+    WeatherDataPoint,
+    WeatherForecast,
+)
 from app.prediction.weather_forecast.weather_forecast_service import (
     WeatherForecastService,
 )
@@ -106,17 +109,9 @@ class PredictionService:
         )
         power_predictions = []
 
-        # Skip the first weather data point (index 0) to avoid horizon=0 predictions
-        # Start from index 1 to ensure first prediction has horizon > 0
-        forecast_data_to_use = weather_forecast.forecast_data[1:]
-
-        for i, data_point in enumerate(forecast_data_to_use):
+        for i, data_point in enumerate(weather_forecast.forecast_data):
             if i < len(predictions):
-                # Calculate horizon in hours as (prediction_time - forecast_time)
-                horizon_seconds = (
-                    data_point.time - weather_forecast.fetch_time
-                ).total_seconds()
-                horizon_hours = horizon_seconds / 3600.0
+                horizon_hours = self._calculate_horizon(data_point, weather_forecast)
 
                 prediction = PowerPrediction(
                     prediction_time=data_point.time,
@@ -127,3 +122,8 @@ class PredictionService:
                 )
                 power_predictions.append(prediction)
         return power_predictions
+
+    def _calculate_horizon(
+        self, data_point: WeatherDataPoint, weather_forecast: WeatherForecast
+    ) -> float:
+        return (data_point.time - weather_forecast.fetch_time).total_seconds() / 3600.0

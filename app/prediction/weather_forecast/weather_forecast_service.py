@@ -134,6 +134,12 @@ class WeatherForecastService:
                 logger.warning(f"Failed to parse data point at index {i}: {e}")
                 continue
 
+        if len(weather_point_list) > 0:
+            weather_point_list = weather_point_list[1:]
+            logger.debug(
+                "Removed first weather data point to avoid horizon=0 predictions"
+            )
+
         return weather_point_list
 
     def _get_value_at_index(
