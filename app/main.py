@@ -26,6 +26,8 @@ from app.prediction.power_readings.power_readings_models import (
     CSVUploadResponse,
     PowerReading,
 )
+from app.prediction.metrics.metrics_repository import MetricsRepository
+from app.prediction.metrics.metrics_service import MetricsService
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -57,6 +59,10 @@ prediction_scheduler = PredictionScheduler(prediction_service)
 # Initialize power readings services
 power_readings_repository = PowerReadingsRepository()
 power_readings_service = PowerReadingsService(power_readings_repository)
+
+# Initialize metrics services
+metrics_repository = MetricsRepository()
+metrics_service = MetricsService(metrics_repository)
 
 
 @asynccontextmanager
@@ -284,4 +290,25 @@ async def upload_power_readings(
         return CSVUploadResponse(
             success=False,
             message="Failed to upload CSV file",
+        )
+
+
+@app.get("/metric/horizon/type", response_model=List[str])
+async def get_horizon_metric_types():
+    """
+    Get available horizon metric types.
+
+    Returns:
+        List[str]: Array of horizon metric type names
+    """
+    logging.info("Received request for horizon metric types")
+
+    try:
+        metric_types = await metrics_service.get_horizon_metric_types()
+        return metric_types
+
+    except Exception as e:
+        logging.error(f"Error fetching horizon metric types: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Failed to fetch horizon metric types"
         )
