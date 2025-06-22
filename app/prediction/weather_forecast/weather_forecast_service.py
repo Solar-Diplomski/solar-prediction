@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 from typing import List, Optional
-from app.prediction.state.state_models import PowerPlant
+from app.common.connectors.model_manager.model_manager_models import PowerPlant
 from app.prediction.weather_forecast.open_meteo_connector import OpenMeteoConnector
 from app.prediction.weather_forecast.weather_forecast_models import (
     OpenMeteoResponse,

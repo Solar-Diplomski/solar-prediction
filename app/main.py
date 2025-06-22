@@ -8,7 +8,9 @@ from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.prediction_service import PredictionService
 from app.prediction.prediction_models import ForecastResponse
 from app.prediction.scheduling import PredictionScheduler
-from app.prediction.state.model_manager_connector import ModelManagerConnector
+from app.common.connectors.model_manager.model_manager_connector import (
+    ModelManagerConnector,
+)
 from app.prediction.state.state_manager import StateManager
 from app.prediction.weather_forecast.open_meteo_connector import OpenMeteoConnector
 from app.config.database import db_manager
@@ -63,7 +65,7 @@ power_readings_service = PowerReadingsService(power_readings_repository)
 
 # Initialize metrics services
 metrics_repository = MetricsRepository()
-metrics_service = MetricsService(metrics_repository)
+metrics_service = MetricsService(metrics_repository, model_manager_connector)
 
 
 @asynccontextmanager
