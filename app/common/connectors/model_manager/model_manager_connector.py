@@ -1,7 +1,8 @@
 import requests
 import logging
-from typing import List, Optional, Dict, Any
-from app.prediction.state.state_models import ModelMetadata, PowerPlant
+from typing import List, Optional
+from app.common.connectors.model_manager.model_manager_models import Model, PowerPlant
+from app.prediction.state.state_models import ModelMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,7 @@ class ModelManagerConnector:
             logger.error(f"Unexpected error while fetching active models: {e}")
             return None
 
-    def fetch_models_for_power_plant(
-        self, plant_id: int
-    ) -> Optional[List[Dict[str, Any]]]:
+    def fetch_models_for_power_plant(self, plant_id: int) -> Optional[List[Model]]:
         try:
             url = f"{self.base_url}/power_plant/{plant_id}/models"
 
@@ -80,10 +79,19 @@ class ModelManagerConnector:
 
             models_data = response.json()
 
+            models = []
+            for model_data in models_data:
+                try:
+                    model = Model(**model_data)
+                    models.append(model)
+                except Exception as e:
+                    logger.error(f"Failed to parse model data {model_data}: {e}")
+                    continue
+
             logger.info(
-                f"Successfully fetched {len(models_data)} models for plant {plant_id}"
+                f"Successfully fetched {len(models)} models for plant {plant_id}"
             )
-            return models_data
+            return models
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch models for plant {plant_id}: {e}")
@@ -92,6 +100,19 @@ class ModelManagerConnector:
             logger.error(
                 f"Unexpected error while fetching models for plant {plant_id}: {e}"
             )
+            return None
+
+    def fetch_model(self, model_id: int) -> Optional[Model]:
+        try:
+            url = f"{self.base_url}/internal/models/{model_id}"
+            response = requests.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            return Model(**response.json())
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch model {model_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error while fetching model {model_id}: {e}")
             return None
 
     def download_model_file(self, model_id: int) -> Optional[bytes]:

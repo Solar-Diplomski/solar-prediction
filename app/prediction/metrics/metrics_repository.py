@@ -7,10 +7,8 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsRepository:
+
     async def get_horizon_metric_types(self) -> List[str]:
-        """
-        Fetch available horizon metric types from the database enum.
-        """
         query = """
             SELECT unnest(enum_range(NULL::horizon_metric_type))::text AS metric_type
             ORDER BY metric_type
@@ -24,9 +22,6 @@ class MetricsRepository:
             raise
 
     async def get_cycle_metric_types(self) -> List[str]:
-        """
-        Fetch available cycle metric types from the database enum.
-        """
         query = """
             SELECT unnest(enum_range(NULL::cycle_metric_type))::text AS metric_type
             ORDER BY metric_type
@@ -40,15 +35,6 @@ class MetricsRepository:
             raise
 
     async def get_horizon_metrics(self, model_id: int) -> List[dict]:
-        """
-        Fetch horizon metrics for a specific model.
-
-        Args:
-            model_id: The model ID to fetch metrics for
-
-        Returns:
-            List of dictionaries containing metric_type, horizon, and value
-        """
         query = """
             SELECT metric_type::text, horizon, value
             FROM horizon_metrics
@@ -65,17 +51,6 @@ class MetricsRepository:
     async def get_cycle_metrics(
         self, model_id: int, start_date: datetime, end_date: datetime
     ) -> List[dict]:
-        """
-        Fetch cycle metrics for a specific model within a date range.
-
-        Args:
-            model_id: The model ID to fetch metrics for
-            start_date: Start date filter
-            end_date: End date filter
-
-        Returns:
-            List of dictionaries containing time_of_forecast, metric_type, and value
-        """
         query = """
             SELECT time_of_forecast, metric_type::text, value
             FROM cycle_metrics
@@ -95,12 +70,6 @@ class MetricsRepository:
     async def save_horizon_metrics(
         self, metrics_data: List[Tuple[int, str, float, float]]
     ) -> None:
-        """
-        Save horizon metrics to the database.
-
-        Args:
-            metrics_data: List of tuples containing (model_id, metric_type, horizon, value)
-        """
         if not metrics_data:
             return
 

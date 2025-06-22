@@ -1,16 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, List
 import joblib
-from pydantic import BaseModel
 from typing import Optional
 import io
-
-
-class ModelMetadata(BaseModel):
-    id: int
-    features: List[str]
-    plant_id: int
-    file_type: str
+from app.common.connectors.model_manager.model_manager_models import ModelMetadata
 
 
 class MLModel(ABC):
@@ -39,10 +32,3 @@ class JoblibModel(MLModel):
 
     def predict(self, features: List[List[float]]) -> List[float]:
         return self._model.predict(features)
-
-
-class PowerPlant(BaseModel):
-    id: int
-    longitude: Optional[float] = None
-    latitude: Optional[float] = None
-    capacity: Optional[float] = None
