@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Tuple
 from datetime import datetime
 from app.config.database import db_manager
 
@@ -90,4 +90,68 @@ class MetricsRepository:
             return rows
         except Exception as e:
             logger.error(f"Failed to fetch cycle metrics for model {model_id}: {e}")
+            raise
+
+    async def save_horizon_metrics(
+        self, metrics_data: List[Tuple[int, str, float, float]]
+    ) -> None:
+        """
+        Save horizon metrics to the database.
+
+        Args:
+            metrics_data: List of tuples containing (model_id, metric_type, horizon, value)
+        """
+        if not metrics_data:
+            return
+
+        query = """
+            INSERT INTO horizon_metrics (model_id, metric_type, horizon, value)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (model_id, metric_type, horizon) 
+            DO UPDATE SET value = EXCLUDED.value
+        """
+
+        try:
+            await db_manager.execute_many(query, metrics_data)
+            logger.info(f"Successfully saved {len(metrics_data)} horizon metrics")
+        except Exception as e:
+            logger.error(f"Failed to save horizon metrics: {e}")
+            raise
+
+    async def get_predictions_and_readings_for_model(
+        self, model_id: int, plant_id: int
+    ) -> List[dict]:
+        """
+        Fetch predictions and corresponding actual readings for a specific model.
+
+        Args:
+            model_id: The model ID
+            plant_id: The power plant ID
+
+        Returns:
+            List of dictionaries containing prediction and actual reading pairs
+        """
+        query = """
+            SELECT 
+                pp.prediction_time,
+                pp.predicted_power,
+                pp.horizon,
+                pr.power_w as actual_power
+            FROM power_predictions pp
+            INNER JOIN power_readings pr ON pp.prediction_time = pr.timestamp 
+                AND pr.plant_id = $2
+            WHERE pp.model_id = $1
+                AND pp.predicted_power IS NOT NULL
+                AND pr.power_w IS NOT NULL
+                AND pp.horizon IN (0.25, 1, 6, 24, 48, 72)
+            ORDER BY pp.prediction_time
+        """
+
+        try:
+            rows = await db_manager.execute(query, model_id, plant_id)
+            return rows
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch predictions and readings for model {model_id}: {e}"
+            )
             raise

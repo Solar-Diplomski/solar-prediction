@@ -1,6 +1,6 @@
 import requests
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.prediction.state.state_models import ModelMetadata, PowerPlant
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,31 @@ class ModelManagerConnector:
             return None
         except Exception as e:
             logger.error(f"Unexpected error while fetching active models: {e}")
+            return None
+
+    def fetch_models_for_power_plant(
+        self, plant_id: int
+    ) -> Optional[List[Dict[str, Any]]]:
+        try:
+            url = f"{self.base_url}/power_plant/{plant_id}/models"
+
+            response = requests.get(url, timeout=self.timeout)
+            response.raise_for_status()
+
+            models_data = response.json()
+
+            logger.info(
+                f"Successfully fetched {len(models_data)} models for plant {plant_id}"
+            )
+            return models_data
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch models for plant {plant_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(
+                f"Unexpected error while fetching models for plant {plant_id}: {e}"
+            )
             return None
 
     def download_model_file(self, model_id: int) -> Optional[bytes]:
