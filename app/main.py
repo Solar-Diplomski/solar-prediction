@@ -28,7 +28,7 @@ from app.prediction.power_readings.power_readings_models import (
 )
 from app.prediction.metrics.metrics_repository import MetricsRepository
 from app.prediction.metrics.metrics_service import MetricsService
-from app.prediction.metrics.metrics_models import HorizonMetric
+from app.prediction.metrics.metrics_models import HorizonMetric, CycleMetric
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -318,3 +318,45 @@ async def get_horizon_metrics(
             f"Error fetching horizon metrics for model {model_id}: {e}", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to fetch horizon metrics")
+
+
+@app.get("/metric/cycle/{model_id}", response_model=List[CycleMetric])
+async def get_cycle_metrics(
+    model_id: int,
+    start_date: datetime = Query(..., description="Start date in ISO 8601 format"),
+    end_date: datetime = Query(..., description="End date in ISO 8601 format"),
+):
+    """
+    Get cycle metrics for a specific model within a date range.
+
+    Args:
+        model_id: The model ID to fetch metrics for
+        start_date: Start date filter (required)
+        end_date: End date filter (required)
+
+    Returns:
+        List[CycleMetric]: Array of cycle metrics with time_of_forecast, metric_type, and value fields
+    """
+    logging.info(f"Received request for cycle metrics for model {model_id}")
+
+    try:
+        if start_date >= end_date:
+            logging.warning(
+                f"Invalid date range: start_date {start_date} >= end_date {end_date}"
+            )
+            raise HTTPException(
+                status_code=400, detail="Start date must be before end date"
+            )
+
+        metrics = await metrics_service.get_cycle_metrics(
+            model_id, start_date, end_date
+        )
+        return metrics
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(
+            f"Error fetching cycle metrics for model {model_id}: {e}", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to fetch cycle metrics")

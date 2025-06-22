@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from datetime import datetime
 from app.config.database import db_manager
 
 logger = logging.getLogger(__name__)
@@ -59,4 +60,34 @@ class MetricsRepository:
             return rows
         except Exception as e:
             logger.error(f"Failed to fetch horizon metrics for model {model_id}: {e}")
+            raise
+
+    async def get_cycle_metrics(
+        self, model_id: int, start_date: datetime, end_date: datetime
+    ) -> List[dict]:
+        """
+        Fetch cycle metrics for a specific model within a date range.
+
+        Args:
+            model_id: The model ID to fetch metrics for
+            start_date: Start date filter
+            end_date: End date filter
+
+        Returns:
+            List of dictionaries containing time_of_forecast, metric_type, and value
+        """
+        query = """
+            SELECT time_of_forecast, metric_type::text, value
+            FROM cycle_metrics
+            WHERE model_id = $1 
+            AND time_of_forecast >= $2 
+            AND time_of_forecast <= $3
+            ORDER BY time_of_forecast
+        """
+
+        try:
+            rows = await db_manager.execute(query, model_id, start_date, end_date)
+            return rows
+        except Exception as e:
+            logger.error(f"Failed to fetch cycle metrics for model {model_id}: {e}")
             raise
