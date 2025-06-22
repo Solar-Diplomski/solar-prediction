@@ -28,6 +28,7 @@ from app.prediction.power_readings.power_readings_models import (
 )
 from app.prediction.metrics.metrics_repository import MetricsRepository
 from app.prediction.metrics.metrics_service import MetricsService
+from app.prediction.metrics.metrics_models import HorizonMetric
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -293,43 +294,27 @@ async def upload_power_readings(
         )
 
 
-@app.get("/metric/horizon/type", response_model=List[str])
-async def get_horizon_metric_types():
+@app.get("/metric/horizon/{model_id}", response_model=List[HorizonMetric])
+async def get_horizon_metrics(
+    model_id: int,
+):
     """
-    Get available horizon metric types.
+    Get horizon metrics for a specific model.
+
+    Args:
+        model_id: The model ID to fetch metrics for
 
     Returns:
-        List[str]: Array of horizon metric type names
+        List[HorizonMetric]: Array of horizon metrics with metric_type, horizon, and value fields
     """
-    logging.info("Received request for horizon metric types")
+    logging.info(f"Received request for horizon metrics for model {model_id}")
 
     try:
-        metric_types = await metrics_service.get_horizon_metric_types()
-        return metric_types
+        metrics = await metrics_service.get_horizon_metrics(model_id)
+        return metrics
 
     except Exception as e:
-        logging.error(f"Error fetching horizon metric types: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Failed to fetch horizon metric types"
+        logging.error(
+            f"Error fetching horizon metrics for model {model_id}: {e}", exc_info=True
         )
-
-
-@app.get("/metric/cycle/type", response_model=List[str])
-async def get_cycle_metric_types():
-    """
-    Get available cycle metric types.
-
-    Returns:
-        List[str]: Array of cycle metric type names
-    """
-    logging.info("Received request for cycle metric types")
-
-    try:
-        metric_types = await metrics_service.get_cycle_metric_types()
-        return metric_types
-
-    except Exception as e:
-        logging.error(f"Error fetching cycle metric types: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Failed to fetch cycle metric types"
-        )
+        raise HTTPException(status_code=500, detail="Failed to fetch horizon metrics")
