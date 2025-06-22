@@ -1,8 +1,9 @@
 import logging
 from typing import List
+from datetime import datetime
 from decimal import Decimal
 from app.prediction.metrics.metrics_repository import MetricsRepository
-from app.prediction.metrics.metrics_models import HorizonMetric
+from app.prediction.metrics.metrics_models import HorizonMetric, CycleMetric
 
 logger = logging.getLogger(__name__)
 
@@ -74,4 +75,39 @@ class MetricsService:
             return metrics
         except Exception as e:
             logger.error(f"Error fetching horizon metrics for model {model_id}: {e}")
+            raise
+
+    async def get_cycle_metrics(
+        self, model_id: int, start_time: datetime, end_time: datetime
+    ) -> List[CycleMetric]:
+        """
+        Get cycle metrics for a specific model within a time range.
+
+        Args:
+            model_id: The model ID to fetch metrics for
+            start_time: Start time filter
+            end_time: End time filter
+
+        Returns:
+            List[CycleMetric]: List of cycle metrics
+        """
+        logger.info(f"Fetching cycle metrics for model {model_id}")
+
+        try:
+            rows = await self._metrics_repository.get_cycle_metrics(
+                model_id, start_time, end_time
+            )
+            metrics = [
+                CycleMetric(
+                    time_of_forecast=row["time_of_forecast"],
+                    metric_type=row["metric_type"],
+                    value=Decimal(str(row["value"])),
+                )
+                for row in rows
+            ]
+
+            logger.info(f"Retrieved {len(metrics)} cycle metrics for model {model_id}")
+            return metrics
+        except Exception as e:
+            logger.error(f"Error fetching cycle metrics for model {model_id}: {e}")
             raise
