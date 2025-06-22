@@ -157,6 +157,83 @@ class MetricsService:
             logger.error(f"Error calculating horizon metrics for plant {plant_id}: {e}")
             raise
 
+    async def calculate_cycle_metrics_by_model(self, model_id: int) -> None:
+        try:
+            metric_types = await self._metrics_repository.get_cycle_metric_types()
+            model = self._model_manager_connector.fetch_model(model_id)
+
+            data = await self._metrics_repository.get_predictions_and_readings_by_cycle(
+                model_id, model.plant_id
+            )
+
+            if not data:
+                logger.warning(
+                    f"No data found for model {model_id} and plant {model.plant_id}"
+                )
+                return
+
+            cycle_data = self._group_data_by_cycle(data)
+
+            metrics_to_save = []
+            for time_of_forecast, cycle_predictions in cycle_data.items():
+                predicted_values = [row["predicted_power"] for row in cycle_predictions]
+                actual_values = [row["actual_power"] for row in cycle_predictions]
+
+                for metric_type in metric_types:
+                    metric_value = self._calculate_metric(
+                        metric_type, predicted_values, actual_values
+                    )
+                    metrics_to_save.append(
+                        (time_of_forecast, model_id, metric_type, metric_value)
+                    )
+
+            if metrics_to_save:
+                await self._metrics_repository.save_cycle_metrics(metrics_to_save)
+                logger.info(
+                    f"Calculated and saved {len(metrics_to_save)} cycle metrics for model {model_id}"
+                )
+            else:
+                logger.warning(f"No cycle metrics calculated for model {model_id}")
+
+        except Exception as e:
+            logger.error(f"Error calculating cycle metrics for model {model_id}: {e}")
+            raise
+
+    async def calculate_cycle_metrics_by_plant(self, plant_id: int) -> None:
+        try:
+            models = self._model_manager_connector.fetch_models_for_power_plant(
+                plant_id
+            )
+
+            if not models:
+                logger.warning(f"No models found for plant {plant_id}")
+                return
+
+            for model in models:
+                model_id = model["id"]
+                logger.info(
+                    f"Calculating cycle metrics for model {model_id} in plant {plant_id}"
+                )
+                await self.calculate_cycle_metrics_by_model(model_id)
+
+            logger.info(
+                f"Completed calculating cycle metrics for {len(models)} models in plant {plant_id}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error calculating cycle metrics for plant {plant_id}: {e}")
+            raise
+
+    def _group_data_by_cycle(self, data: List[dict]) -> Dict[datetime, List[dict]]:
+        cycle_data = {}
+        for row in data:
+            time_of_forecast = row["time_of_forecast"]
+            if time_of_forecast not in cycle_data:
+                cycle_data[time_of_forecast] = []
+            cycle_data[time_of_forecast].append(row)
+
+        return cycle_data
+
     def _group_data_by_horizon(self, data: List[dict]) -> Dict[float, List[dict]]:
         horizon_data = {}
         for row in data:

@@ -124,3 +124,60 @@ class MetricsRepository:
                 f"Failed to fetch predictions and readings for model {model_id}: {e}"
             )
             raise
+
+    async def save_cycle_metrics(
+        self, metrics_data: List[Tuple[datetime, int, str, float]]
+    ) -> None:
+        if not metrics_data:
+            return
+
+        query = """
+            INSERT INTO cycle_metrics (time_of_forecast, model_id, metric_type, value)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (time_of_forecast, model_id, metric_type) 
+            DO UPDATE SET value = EXCLUDED.value
+        """
+
+        try:
+            await db_manager.execute_many(query, metrics_data)
+            logger.info(f"Successfully saved {len(metrics_data)} cycle metrics")
+        except Exception as e:
+            logger.error(f"Failed to save cycle metrics: {e}")
+            raise
+
+    async def get_predictions_and_readings_by_cycle(
+        self, model_id: int, plant_id: int
+    ) -> List[dict]:
+        """
+        Fetch predictions and corresponding actual readings grouped by forecast cycle (created_at).
+
+        Args:
+            model_id: The model ID
+            plant_id: The power plant ID
+
+        Returns:
+            List of dictionaries containing prediction and actual reading pairs with cycle info
+        """
+        query = """
+            SELECT 
+                pp.created_at as time_of_forecast,
+                pp.prediction_time,
+                pp.predicted_power,
+                pr.power_w as actual_power
+            FROM power_predictions pp
+            INNER JOIN power_readings pr ON pp.prediction_time = pr.timestamp 
+                AND pr.plant_id = $2
+            WHERE pp.model_id = $1
+                AND pp.predicted_power IS NOT NULL
+                AND pr.power_w IS NOT NULL
+            ORDER BY pp.created_at, pp.prediction_time
+        """
+
+        try:
+            rows = await db_manager.execute(query, model_id, plant_id)
+            return rows
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch predictions and readings by cycle for model {model_id}: {e}"
+            )
+            raise
