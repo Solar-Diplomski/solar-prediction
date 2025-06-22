@@ -78,15 +78,15 @@ class MetricsService:
             raise
 
     async def get_cycle_metrics(
-        self, model_id: int, start_time: datetime, end_time: datetime
+        self, model_id: int, start_date: datetime, end_date: datetime
     ) -> List[CycleMetric]:
         """
-        Get cycle metrics for a specific model within a time range.
+        Get cycle metrics for a specific model within a date range.
 
         Args:
             model_id: The model ID to fetch metrics for
-            start_time: Start time filter
-            end_time: End time filter
+            start_date: Start date filter
+            end_date: End date filter
 
         Returns:
             List[CycleMetric]: List of cycle metrics
@@ -95,7 +95,7 @@ class MetricsService:
 
         try:
             rows = await self._metrics_repository.get_cycle_metrics(
-                model_id, start_time, end_time
+                model_id, start_date, end_date
             )
             metrics = [
                 CycleMetric(
