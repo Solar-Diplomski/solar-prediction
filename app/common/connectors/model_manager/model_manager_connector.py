@@ -104,7 +104,7 @@ class ModelManagerConnector:
 
     def fetch_model(self, model_id: int) -> Optional[Model]:
         try:
-            url = f"{self.base_url}/internal/models/{model_id}"
+            url = f"{self.base_url}/models/{model_id}"
             response = requests.get(url, timeout=self.timeout)
             response.raise_for_status()
             return Model(**response.json())

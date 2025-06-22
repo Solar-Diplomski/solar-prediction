@@ -147,7 +147,7 @@ class MetricsService:
                 logger.info(
                     f"Calculating metrics for model {model_id} in plant {plant_id}"
                 )
-                await self.calculate_horizon_metrics_by_model(model_id, plant_id)
+                await self.calculate_horizon_metrics_by_model(model_id)
 
             logger.info(
                 f"Completed calculating horizon metrics for {len(models)} models in plant {plant_id}"

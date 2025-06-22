@@ -362,3 +362,38 @@ async def get_cycle_metrics(
             f"Error fetching cycle metrics for model {model_id}: {e}", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to fetch cycle metrics")
+
+
+@app.post("/metric/calculate/{model_id}")
+async def calculate_metrics(model_id: int):
+    """
+    Calculate both horizon and cycle metrics for a specific model.
+
+    Args:
+        model_id: The model ID to calculate metrics for
+
+    Returns:
+        dict: Success message indicating both horizon and cycle metrics were calculated
+    """
+    logging.info(f"Received request to calculate metrics for model {model_id}")
+
+    try:
+        # Calculate horizon metrics
+        await metrics_service.calculate_horizon_metrics_by_model(model_id)
+        logging.info(f"Successfully calculated horizon metrics for model {model_id}")
+
+        # Calculate cycle metrics
+        await metrics_service.calculate_cycle_metrics_by_model(model_id)
+        logging.info(f"Successfully calculated cycle metrics for model {model_id}")
+
+        return {
+            "success": True,
+            "message": f"Successfully calculated horizon and cycle metrics for model {model_id}",
+            "model_id": model_id,
+        }
+
+    except Exception as e:
+        logging.error(
+            f"Error calculating metrics for model {model_id}: {e}", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to calculate metrics")
