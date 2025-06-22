@@ -143,11 +143,10 @@ class MetricsService:
                 return
 
             for model in models:
-                model_id = model["id"]
                 logger.info(
-                    f"Calculating metrics for model {model_id} in plant {plant_id}"
+                    f"Calculating metrics for model {model.id} in plant {plant_id}"
                 )
-                await self.calculate_horizon_metrics_by_model(model_id)
+                await self.calculate_horizon_metrics_by_model(model.id)
 
             logger.info(
                 f"Completed calculating horizon metrics for {len(models)} models in plant {plant_id}"
@@ -210,11 +209,10 @@ class MetricsService:
                 return
 
             for model in models:
-                model_id = model["id"]
                 logger.info(
-                    f"Calculating cycle metrics for model {model_id} in plant {plant_id}"
+                    f"Calculating cycle metrics for model {model.id} in plant {plant_id}"
                 )
-                await self.calculate_cycle_metrics_by_model(model_id)
+                await self.calculate_cycle_metrics_by_model(model.id)
 
             logger.info(
                 f"Completed calculating cycle metrics for {len(models)} models in plant {plant_id}"
