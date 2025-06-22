@@ -37,3 +37,26 @@ class MetricsRepository:
         except Exception as e:
             logger.error(f"Failed to fetch cycle metric types: {e}")
             raise
+
+    async def get_horizon_metrics(self, model_id: int) -> List[dict]:
+        """
+        Fetch horizon metrics for a specific model.
+
+        Args:
+            model_id: The model ID to fetch metrics for
+
+        Returns:
+            List of dictionaries containing metric_type, horizon, and value
+        """
+        query = """
+            SELECT metric_type::text, horizon, value
+            FROM horizon_metrics
+            WHERE model_id = $1
+        """
+
+        try:
+            rows = await db_manager.execute(query, model_id)
+            return rows
+        except Exception as e:
+            logger.error(f"Failed to fetch horizon metrics for model {model_id}: {e}")
+            raise
