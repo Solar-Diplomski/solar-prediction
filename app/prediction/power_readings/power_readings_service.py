@@ -12,13 +12,20 @@ from app.prediction.power_readings.power_readings_models import (
 from app.prediction.power_readings.power_readings_repository import (
     PowerReadingsRepository,
 )
+from app.prediction.metrics.metrics_service import MetricsService
 
 logger = logging.getLogger(__name__)
 
 
 class PowerReadingsService:
-    def __init__(self, power_readings_repository: PowerReadingsRepository):
+
+    def __init__(
+        self,
+        power_readings_repository: PowerReadingsRepository,
+        metrics_service: MetricsService,
+    ):
         self._repository = power_readings_repository
+        self._metrics_service = metrics_service
 
     async def get_power_readings(
         self, plant_id: int, start_date: datetime, end_date: datetime
@@ -48,6 +55,14 @@ class PowerReadingsService:
                 validation_result.readings, plant_id
             )
 
+            try:
+                await self._trigger_metrics_calculation(plant_id)
+                logger.info(
+                    f"Successfully completed metric calculation for plant {plant_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to calculate metrics for plant {plant_id}: {e}")
+
             return CSVUploadResponse(
                 success=True,
                 message=f"Successfully uploaded {len(validation_result.readings)} power readings",
@@ -59,6 +74,23 @@ class PowerReadingsService:
                 success=False,
                 message="Failed to save CSV",
             )
+
+    async def _trigger_metrics_calculation(self, plant_id: int) -> None:
+        """
+        Trigger metric calculations for all models in the power plant.
+        """
+        try:
+            # Calculate horizon metrics for all models in the plant
+            await self._metrics_service.calculate_horizon_metrics_by_plant(plant_id)
+            logger.info(f"Completed horizon metrics calculation for plant {plant_id}")
+
+            # Calculate cycle metrics for all models in the plant
+            await self._metrics_service.calculate_cycle_metrics_by_plant(plant_id)
+            logger.info(f"Completed cycle metrics calculation for plant {plant_id}")
+
+        except Exception as e:
+            logger.error(f"Error during metrics calculation for plant {plant_id}: {e}")
+            raise
 
     async def _validate_and_parse_csv(self, file: UploadFile) -> CSVValidationResult:
         """

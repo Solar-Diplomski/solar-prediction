@@ -59,13 +59,13 @@ prediction_service = PredictionService(
 )
 prediction_scheduler = PredictionScheduler(prediction_service)
 
-# Initialize power readings services
-power_readings_repository = PowerReadingsRepository()
-power_readings_service = PowerReadingsService(power_readings_repository)
-
-# Initialize metrics services
 metrics_repository = MetricsRepository()
 metrics_service = MetricsService(metrics_repository, model_manager_connector)
+
+power_readings_repository = PowerReadingsRepository()
+power_readings_service = PowerReadingsService(
+    power_readings_repository, metrics_service
+)
 
 
 @asynccontextmanager
