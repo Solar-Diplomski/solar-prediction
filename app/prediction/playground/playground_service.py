@@ -37,7 +37,6 @@ class PlaygroundService:
     def get_model_features(self, model_id: int) -> Optional[PlaygroundFeatureInfo]:
         """Get model features and metadata for playground use"""
         try:
-            # Get model from model manager connector (any model, not just active)
             model_metadata = self._model_manager_connector.fetch_model(model_id)
 
             if not model_metadata:
@@ -60,7 +59,6 @@ class PlaygroundService:
     ) -> PlaygroundPredictionResponse:
         """Process CSV file and generate predictions with metrics"""
         try:
-            # Get model metadata
             model_metadata = self._model_manager_connector.fetch_model(model_id)
             if not model_metadata:
                 return PlaygroundPredictionResponse(
@@ -88,6 +86,28 @@ class PlaygroundService:
 
             ml_model = ModelFactory.create_model(model_metadata, model_file)
 
+            # Check file size (max 100MB)
+            file_size_mb = 100
+            max_file_size = file_size_mb * 1024 * 1024  # 100MB in bytes
+
+            # Get file size
+            file.file.seek(0, 2)  # Seek to end of file
+            file_size = file.file.tell()
+            file.file.seek(0)  # Reset to beginning
+
+            if file_size > max_file_size:
+                return PlaygroundPredictionResponse(
+                    model_id=model_id,
+                    predictions=[],
+                    metrics=[],
+                    input_rows=0,
+                    success=False,
+                    message=f"File size exceeds the maximum limit of {file_size_mb}MB",
+                    validation_errors=[
+                        f"File size is {file_size / (1024*1024):.1f}MB. Maximum allowed size is {file_size_mb}MB."
+                    ],
+                )
+
             # Validate CSV
             validation_result = await self._validate_csv(file, ml_model.features)
             if not validation_result.is_valid:
@@ -101,10 +121,8 @@ class PlaygroundService:
                     validation_errors=validation_result.errors,
                 )
 
-            # Generate predictions
             raw_predictions = ml_model.predict(validation_result.feature_data)
 
-            # Create prediction rows with timestamps
             prediction_rows = []
             for i, timestamp in enumerate(validation_result.timestamps):
                 if i < len(raw_predictions):

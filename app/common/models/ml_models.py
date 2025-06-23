@@ -20,7 +20,7 @@ class MLModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, features: List[List[float]]) -> float:
+    def predict(self, features: List[List[float]]) -> List[float]:
         pass
 
 
