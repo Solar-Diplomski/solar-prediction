@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List
@@ -37,7 +38,7 @@ logging.basicConfig(
 )
 
 OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
-MODEL_MANAGER_BASE_URL = "http://localhost:8000"
+MODEL_MANAGER_BASE_URL = os.getenv("MODEL_MANAGER_BASE_URL", "http://localhost:8000")
 
 model_manager_connector = ModelManagerConnector(base_url=MODEL_MANAGER_BASE_URL)
 state_manager = StateManager(model_manager_connector=model_manager_connector)
