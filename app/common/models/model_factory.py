@@ -1,4 +1,4 @@
-from app.prediction.state.state_models import MLModel, JoblibModel
+from app.common.models.ml_models import MLModel, JoblibModel
 from app.common.connectors.model_manager.model_manager_models import ModelMetadata
 
 

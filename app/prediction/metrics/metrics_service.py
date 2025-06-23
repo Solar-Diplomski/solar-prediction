@@ -113,7 +113,7 @@ class MetricsService:
                 actual_values = [row["actual_power"] for row in horizon_predictions]
 
                 for metric_type in metric_types:
-                    metric_value = self._calculate_metric(
+                    metric_value = self.calculate_metric(
                         metric_type, predicted_values, actual_values
                     )
                     metrics_to_save.append(
@@ -179,7 +179,7 @@ class MetricsService:
                 actual_values = [row["actual_power"] for row in cycle_predictions]
 
                 for metric_type in metric_types:
-                    metric_value = self._calculate_metric(
+                    metric_value = self.calculate_metric(
                         metric_type, predicted_values, actual_values
                     )
                     metrics_to_save.append(
@@ -242,7 +242,7 @@ class MetricsService:
 
         return horizon_data
 
-    def _calculate_metric(
+    def calculate_metric(
         self, metric_type: str, predicted: List[float], actual: List[float]
     ) -> float:
         if not predicted or not actual or len(predicted) != len(actual):
