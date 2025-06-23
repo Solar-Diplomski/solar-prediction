@@ -309,7 +309,7 @@ class PlaygroundService:
     ) -> List[PlaygroundMetric]:
         """Calculate metrics by fetching actual power readings for the given timestamps"""
         try:
-            if not timestamps or not predictions:
+            if len(timestamps) == 0 or len(predictions) == 0:
                 return []
 
             # Get date range for fetching power readings
@@ -341,7 +341,7 @@ class PlaygroundService:
                     matched_predictions.append(predictions[i])
                     matched_actuals.append(readings_map[timestamp])
 
-            if not matched_predictions:
+            if len(matched_predictions) == 0:
                 logger.warning("No matching power readings found for timestamps")
                 return []
 

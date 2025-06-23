@@ -245,7 +245,7 @@ class MetricsService:
     def calculate_metric(
         self, metric_type: str, predicted: List[float], actual: List[float]
     ) -> float:
-        if not predicted or not actual or len(predicted) != len(actual):
+        if len(predicted) == 0 or len(actual) == 0 or len(predicted) != len(actual):
             raise ValueError(
                 "Predicted and actual values must have the same non-zero length"
             )
