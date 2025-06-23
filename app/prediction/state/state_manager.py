@@ -1,6 +1,6 @@
 from typing import Dict, List
-from app.prediction.state.state_models import MLModel
-from app.prediction.state.model_factory import ModelFactory
+from app.common.models.ml_models import MLModel
+from app.common.models.model_factory import ModelFactory
 from app.common.connectors.model_manager.model_manager_connector import (
     ModelManagerConnector,
 )
