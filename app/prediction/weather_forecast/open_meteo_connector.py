@@ -2,7 +2,7 @@ import requests
 import logging
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
-from app.prediction.state.state_models import PowerPlant
+from app.common.connectors.model_manager.model_manager_models import PowerPlant
 from app.prediction.weather_forecast.weather_forecast_models import (
     OpenMeteoResponse,
 )

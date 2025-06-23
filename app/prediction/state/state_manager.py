@@ -1,7 +1,10 @@
 from typing import Dict, List
-from app.prediction.state.state_models import MLModel, PowerPlant
+from app.prediction.state.state_models import MLModel
 from app.prediction.state.model_factory import ModelFactory
-from app.prediction.state.model_manager_connector import ModelManagerConnector
+from app.common.connectors.model_manager.model_manager_connector import (
+    ModelManagerConnector,
+)
+from app.common.connectors.model_manager.model_manager_models import PowerPlant
 import logging
 
 logger = logging.getLogger(__name__)

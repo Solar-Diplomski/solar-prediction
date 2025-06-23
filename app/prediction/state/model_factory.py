@@ -1,4 +1,5 @@
-from app.prediction.state.state_models import ModelMetadata, MLModel, JoblibModel
+from app.prediction.state.state_models import MLModel, JoblibModel
+from app.common.connectors.model_manager.model_manager_models import ModelMetadata
 
 
 class ModelFactory:
