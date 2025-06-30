@@ -22,6 +22,7 @@ class WeatherDataPoint(BaseModel):
     sunshine_duration: Optional[float] = None
     shortwave_radiation_instant: Optional[float] = None
     diffuse_radiation_instant: Optional[float] = None
+    direct_radiation_instant: Optional[float] = None
 
 
 class WeatherForecast(BaseModel):
