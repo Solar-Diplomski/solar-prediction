@@ -4,7 +4,7 @@ from app.prediction.data_preparation_service import DataPreparationService
 from app.prediction.prediction_models import PowerPrediction
 from app.prediction.prediction_repository import PredictionRepository
 from app.prediction.state.state_manager import StateManager
-from app.prediction.state.state_models import MLModel
+from app.common.models.ml_models import MLModel
 from app.prediction.weather_forecast.weather_forecast_models import (
     WeatherDataPoint,
     WeatherForecast,

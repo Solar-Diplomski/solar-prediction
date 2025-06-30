@@ -33,6 +33,11 @@ from app.prediction.power_readings.power_readings_models import (
 from app.prediction.metrics.metrics_repository import MetricsRepository
 from app.prediction.metrics.metrics_service import MetricsService
 from app.prediction.metrics.metrics_models import HorizonMetric, CycleMetric
+from app.prediction.playground.playground_service import PlaygroundService
+from app.prediction.playground.playground_models import (
+    PlaygroundFeatureInfo,
+    PlaygroundPredictionResponse,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -67,6 +72,12 @@ metrics_service = MetricsService(metrics_repository, model_manager_connector)
 power_readings_repository = PowerReadingsRepository()
 power_readings_service = PowerReadingsService(
     power_readings_repository, metrics_service
+)
+
+playground_service = PlaygroundService(
+    model_manager_connector=model_manager_connector,
+    metrics_service=metrics_service,
+    power_readings_service=power_readings_service,
 )
 
 
@@ -399,3 +410,88 @@ async def calculate_metrics(model_id: int):
             f"Error calculating metrics for model {model_id}: {e}", exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to calculate metrics")
+
+
+# Playground endpoints
+@app.get("/playground/model/{model_id}/features", response_model=PlaygroundFeatureInfo)
+async def get_model_features(model_id: int):
+    """
+    Get model features and metadata for playground use.
+
+    Args:
+        model_id: The model ID to get features for
+
+    Returns:
+        PlaygroundFeatureInfo: Model metadata including required features list
+    """
+    logging.info(f"Received request for model features for model {model_id}")
+
+    try:
+        feature_info = playground_service.get_model_features(model_id)
+
+        if not feature_info:
+            raise HTTPException(
+                status_code=404, detail=f"Model {model_id} not found or not active"
+            )
+
+        return feature_info
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(
+            f"Error getting model features for model {model_id}: {e}", exc_info=True
+        )
+        raise HTTPException(status_code=500, detail="Failed to get model features")
+
+
+@app.post("/playground/predict/{model_id}", response_model=PlaygroundPredictionResponse)
+async def playground_predict(
+    model_id: int,
+    file: UploadFile = File(
+        ..., description="CSV file with timestamp and feature columns"
+    ),
+):
+    """
+    Generate predictions from CSV file for playground use.
+
+    Args:
+        model_id: The model ID to use for predictions
+        file: CSV file with timestamp as first column followed by feature columns
+
+    Returns:
+        PlaygroundPredictionResponse: Predictions, metrics, and validation results
+    """
+    logging.info(f"Received playground prediction request for model {model_id}")
+
+    try:
+        # Validate file type
+        if not file.filename or not file.filename.lower().endswith(".csv"):
+            return PlaygroundPredictionResponse(
+                model_id=model_id,
+                predictions=[],
+                metrics=[],
+                input_rows=0,
+                success=False,
+                message="File must be a CSV file",
+                validation_errors=["Invalid file type. Only CSV files are accepted."],
+            )
+
+        response = await playground_service.predict_from_csv(model_id, file)
+        return response
+
+    except Exception as e:
+        logging.error(
+            f"Error in playground prediction for model {model_id}: {e}", exc_info=True
+        )
+        return PlaygroundPredictionResponse(
+            model_id=model_id,
+            predictions=[],
+            metrics=[],
+            input_rows=0,
+            success=False,
+            message="An error occurred while processing your request. Please try again.",
+            validation_errors=[
+                "Processing failed. Please check your file and try again."
+            ],
+        )

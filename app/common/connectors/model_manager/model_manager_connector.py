@@ -1,8 +1,11 @@
 import requests
 import logging
 from typing import List, Optional
-from app.common.connectors.model_manager.model_manager_models import Model, PowerPlant
-from app.prediction.state.state_models import ModelMetadata
+from app.common.connectors.model_manager.model_manager_models import (
+    Model,
+    ModelMetadata,
+    PowerPlant,
+)
 
 logger = logging.getLogger(__name__)
 
