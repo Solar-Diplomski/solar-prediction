@@ -24,20 +24,26 @@ class WeatherForecastService:
         self._open_meteo_connector = open_meteo_connector
         self._weather_forecast_repository = weather_forecast_repository
 
-    def get_weather_forecast(self, power_plant: PowerPlant) -> WeatherForecast:
+    def get_weather_forecast(
+        self, power_plant: PowerPlant, custom_start_time: Optional[datetime] = None
+    ) -> WeatherForecast:
         created_at, open_meteo_response = (
-            self._open_meteo_connector.fetch_weather_forecast(power_plant)
+            self._open_meteo_connector.fetch_weather_forecast(
+                power_plant, custom_start_time
+            )
         )
         return self._to_weather_forecast(
             power_plant.id, created_at, open_meteo_response
         )
 
     def get_weather_forecast_for_all_power_plants(
-        self, power_plants: List[PowerPlant]
+        self,
+        power_plants: List[PowerPlant],
+        custom_start_time: Optional[datetime] = None,
     ) -> List[WeatherForecast]:
         weather_forecasts = []
         for power_plant in power_plants:
-            weather_forecast = self.get_weather_forecast(power_plant)
+            weather_forecast = self.get_weather_forecast(power_plant, custom_start_time)
             weather_forecasts.append(weather_forecast)
         return weather_forecasts
 
@@ -125,6 +131,9 @@ class WeatherForecastService:
                     ),
                     diffuse_radiation_instant=self._get_value_at_index(
                         minutely_data.get("diffuse_radiation_instant"), i
+                    ),
+                    direct_radiation_instant=self._get_value_at_index(
+                        minutely_data.get("direct_radiation_instant"), i
                     ),
                 )
 

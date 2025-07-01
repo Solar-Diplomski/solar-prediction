@@ -117,6 +117,19 @@ async def root():
     return {"message": "Solar Prediction Service is running"}
 
 
+@app.post("/generate")
+async def generate_predictions(start_date: datetime):
+    """Generate predictions for the next 72 hours from a specific start date."""
+    logging.info(f"Triggering prediction process for start date: {start_date}")
+
+    try:
+        prediction_service.predict(custom_start_time=start_date)
+        return {"message": "Prediction process triggered successfully"}
+    except Exception as e:
+        logging.error(f"Error triggering prediction: {e}", exc_info=True)
+        return {"message": f"Failed to trigger prediction: {str(e)}"}
+
+
 @app.get("/internal/status")
 async def get_status():
     power_plants = state_manager.get_active_power_plants()

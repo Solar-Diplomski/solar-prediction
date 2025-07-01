@@ -1,5 +1,6 @@
 import logging
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 from app.prediction.data_preparation_service import DataPreparationService
 from app.prediction.prediction_models import PowerPrediction
 from app.prediction.prediction_repository import PredictionRepository
@@ -29,8 +30,10 @@ class PredictionService:
         self._data_preparation_service = data_preparation_service
         self._prediction_repository = prediction_repository
 
-    def predict(self):
+    def predict(self, custom_start_time: Optional[datetime] = None):
         logger.info("Starting prediction")
+        if custom_start_time:
+            logger.info(f"Using custom start time: {custom_start_time}")
         logger.info("Refreshing state")
         self._state_manager.refresh_state()
         power_plants = self._state_manager.get_active_power_plants()
@@ -38,7 +41,7 @@ class PredictionService:
 
         weather_forecasts = (
             self._weather_forecast_service.get_weather_forecast_for_all_power_plants(
-                power_plants
+                power_plants, custom_start_time
             )
         )
 

@@ -31,10 +31,11 @@ class OpenMeteoConnector:
             "sunshine_duration",
             "shortwave_radiation_instant",
             "diffuse_radiation_instant",
+            "direct_radiation_instant",
         ]
 
     def fetch_weather_forecast(
-        self, power_plant: PowerPlant
+        self, power_plant: PowerPlant, custom_start_time: Optional[datetime] = None
     ) -> Tuple[datetime, Optional[OpenMeteoResponse]]:
 
         if not power_plant.latitude or not power_plant.longitude:
@@ -42,7 +43,9 @@ class OpenMeteoConnector:
             return None
 
         try:
-            fetch_time = self._get_normalized_time()
+            fetch_time = (
+                custom_start_time if custom_start_time else self._get_normalized_time()
+            )
             start_time_str, end_time_str = self._get_72h_time_range(fetch_time)
 
             params = {

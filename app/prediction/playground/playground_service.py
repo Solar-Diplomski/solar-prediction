@@ -239,6 +239,9 @@ class PlaygroundService:
                     feature_vector = []
                     for feature in required_features:
                         value = row[feature]
+                        if feature == "datetime":
+                            feature_vector.append(timestamp.timestamp())
+                            continue
                         if value is None or value == "":
                             errors.append(
                                 f"Row {row_num}: Missing value for feature '{feature}'"

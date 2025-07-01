@@ -134,6 +134,7 @@ class DataPreparationService:
             "vapour_pressure_deficit",
             "is_day",
             "sunshine_duration",
+            "direct_radiation_instant",
         ]
 
         for attr in weather_attributes:
@@ -143,7 +144,7 @@ class DataPreparationService:
 
     def _register_time_features(self) -> None:
         """Register time-based feature calculators"""
-
+        self._feature_calculators["datetime"] = lambda dp, ctx: dp.time
         self._feature_calculators["hour"] = lambda dp, ctx: dp.time.hour
         self._feature_calculators["month"] = lambda dp, ctx: dp.time.month
         self._feature_calculators["day"] = lambda dp, ctx: dp.time.day
